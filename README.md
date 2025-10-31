@@ -1,27 +1,24 @@
-# Alias Maker Plugin
+# Alias Maker
 
-The Alias Maker plugin is a zsh plugin that allows you to easily create and manage custom zsh aliases from the
-command line.
-
-## Installation
-
-1.  Clone the Alias Maker repository:
-# Alias Maker Plugin
-
-Alias Maker is a zsh plugin that lets you create and manage custom aliases from the command line.
+A simple zsh plugin for creating and managing custom shell aliases from the command line.
 
 ## Installation
 
-1. Clone the repository:
+### Manual Installation
+
+1. Clone the repository to any directory:
 
 ```zsh
-git clone https://github.com/MefitHp/alias-maker.git ~/.oh-my-zsh/custom/plugins/alias-maker
+git clone https://github.com/MefitHp/alias-maker.git ~/zsh-plugins/alias-maker
 ```
 
-2. Add `alias-maker` to your plugin list in `~/.zshrc`:
+2. Source the plugin in your `~/.zshrc`:
 
 ```zsh
-plugins=(git other-plugin alias-maker)
+# Load alias-maker plugin
+if [[ -f ~/zsh-plugins/alias-maker/alias-maker.plugin.zsh ]]; then
+    source ~/zsh-plugins/alias-maker/alias-maker.plugin.zsh
+fi
 ```
 
 3. Reload your shell:
@@ -30,43 +27,65 @@ plugins=(git other-plugin alias-maker)
 source ~/.zshrc
 ```
 
+### Oh-My-Zsh Installation (Optional)
+
+If you use Oh-My-Zsh, you can install it as a custom plugin:
+
+```zsh
+git clone https://github.com/MefitHp/alias-maker.git ~/.oh-my-zsh/custom/plugins/alias-maker
+```
+
+Then add `alias-maker` to your plugins list in `~/.zshrc`:
+
+```zsh
+plugins=(git alias-maker)
+```
+
 ## Usage
 
-This plugin exposes two commands: `mkalias` and `rmalias`.
+The plugin provides three commands for managing aliases:
 
 ```zsh
 mkalias <alias_name> '<alias_command>'   # Create a new alias
-mkalias -l | --list                      # List aliases defined in your ~/.zshrc
-lsalias                                  # List aliases (shortcut)
+rmalias <alias_name>                     # Delete an alias  
+lsalias                                  # List all aliases
+```
+
+Additional options for `mkalias`:
+```zsh
+mkalias -l | --list                      # List aliases (same as lsalias)
 mkalias -h | --help                      # Show help
-rmalias <alias_name>                     # Delete an alias
 ```
 
-### Create a new alias
+### Examples
 
+**Create aliases:**
 ```zsh
-mkalias myalias 'ls -la'
+mkalias ll 'ls -la'
+mkalias gcm 'git commit -m'
+mkalias serve 'python -m http.server 8000'
 ```
 
-This appends the alias to `~/.zshrc` and sources it immediately.
-
-### Delete an alias
-
-```zsh
-rmalias myalias
-```
-
-### List aliases
-
+**List your aliases:**
 ```zsh
 lsalias
 ```
 
-Example output:
+**Remove an alias:**
+```zsh
+rmalias ll
+```
 
-```
-🔧 Custom aliases found in /Users/YOUR_USER/.zshrc:
-    - zshconfig → mate ~/.zshrc
-    - ohmyzsh  → mate ~/.oh-my-zsh
-```
-### Delete an existing custom zsh alias
+## Features
+
+- **Safe quoting**: Commands are automatically escaped to prevent issues with special characters like `$`
+- **Newline handling**: Ensures proper formatting when appending to your `.zshrc`
+- **Immediate availability**: Aliases are sourced automatically after creation
+- **Clean removal**: Deletes alias from both `.zshrc` and current shell session
+
+## Requirements
+
+- Zsh shell
+- Write access to `~/.zshrc`
+
+No framework dependencies required.
