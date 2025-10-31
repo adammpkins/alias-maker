@@ -6,26 +6,25 @@ command line.
 ## Installation
 
 1.  Clone the Alias Maker repository:
+# Alias Maker Plugin
 
-```
+Alias Maker is a zsh plugin that lets you create and manage custom aliases from the command line.
+
+## Installation
+
+1. Clone the repository:
+
+```zsh
 git clone https://github.com/MefitHp/alias-maker.git ~/.oh-my-zsh/custom/plugins/alias-maker
 ```
 
-2.  Then, add `alias-maker` to your Zsh plugins list in your `.zshrc` file:
-
-If using you're using VSCode you can open the file with the following command:
+2. Add `alias-maker` to your plugin list in `~/.zshrc`:
 
 ```zsh
-code ~/.zshrc
+plugins=(git other-plugin alias-maker)
 ```
 
-Then just update the plugins
-
-```zsh
-plugins=(plugin1 plugin2 alias-maker)
-```
-
-3.  Restart your zsh shell or update the shell.
+3. Reload your shell:
 
 ```zsh
 source ~/.zshrc
@@ -33,48 +32,41 @@ source ~/.zshrc
 
 ## Usage
 
-The Alias Maker plugin provides the following subcommands:
+This plugin exposes two commands: `mkalias` and `rmalias`.
 
-```
-amc <alias_name> <alias_command>  # Create a new custom zsh alias
-amd <alias_name>                  # Delete an existing custom zsh alias
-am --list, -l                     # List all custom zsh aliases defined in your .zshrc file
-am --help, -h                     # Show help message
-```
-
-### Create a new custom zsh alias
-
-To create a new custom zsh alias, use the `amc` (Just an `alias-maker-create` shortcut) subcommand followed by
-the name and command for the new alias:
-
-```
-amc myalias 'ls -la'
+```zsh
+mkalias <alias_name> '<alias_command>'   # Create a new alias
+mkalias -l | --list                      # List aliases defined in your ~/.zshrc
+lsalias                                  # List aliases (shortcut)
+mkalias -h | --help                      # Show help
+rmalias <alias_name>                     # Delete an alias
 ```
 
-This will create a new zsh alias named `myalias` that executes the command `ls -la`.
+### Create a new alias
 
-### Delete an existing custom zsh alias
-
-To delete an existing custom zsh alias, use the `amd` subcommand followed by the name of the alias:
-
-```
-amd myalias
+```zsh
+mkalias myalias 'ls -la'
 ```
 
-This will delete the `myalias` alias if it exists.
+This appends the alias to `~/.zshrc` and sources it immediately.
 
-### List all custom zsh aliases
+### Delete an alias
 
-To list all custom zsh aliases defined in your `.zshrc` file, use the `am --list` subcommand:
-
+```zsh
+rmalias myalias
 ```
-am --list
+
+### List aliases
+
+```zsh
+lsalias
 ```
 
 Example output:
 
 ```
 🔧 Custom aliases found in /Users/YOUR_USER/.zshrc:
-    - zshconfig → "mate ~/.zshrc"
-    - ohmyzsh →"mate ~/.oh-my-zsh"
+    - zshconfig → mate ~/.zshrc
+    - ohmyzsh  → mate ~/.oh-my-zsh
 ```
+### Delete an existing custom zsh alias

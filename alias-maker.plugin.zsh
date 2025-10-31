@@ -1,55 +1,40 @@
+#!/usr/bin/env zsh
 # Define the plugin name and version
-declare -r alias_maker_version="1.0.0"
-declare -r alias_maker_name="alias-maker"
+[[ -z "$alias_maker_version" ]] && declare alias_maker_version="1.0.0"
+[[ -z "$alias_maker_name" ]] && declare -r alias_maker_name="alias-maker"
 
-# Check if Oh My Zsh is installed
-if [[ -z "$ZSH" ]]; then
-    echo "Error: Oh My Zsh is not installed on your system. Please install it before using the $alias_maker_name plugin."
-    echo "You can download Oh My Zsh from https://ohmyz.sh"
-    return 1
-fi
-
-# Check if .zshrc file exists
+# Ensure the user's .zshrc file exists
 if [[ ! -f "$HOME/.zshrc" ]]; then
     echo "Creating .zshrc file..."
     touch "$HOME/.zshrc"
 fi
 
-# Define the main function for the alias_maker plugin
-function am() {
-    # Parse the subcommand and its arguments
-    local subcommand=$1
+# Note: legacy 'am' function has been removed. Use mkalias/rmalias directly.
 
-    case $subcommand in
-    -h | --help)
+# Create a new zsh alias
+function mkalias() {
+    # Entry behavior: flags for help/list, otherwise create alias
+    if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
         show_help
         return 0
-        ;;
-    create_alias)
-        amc "$2"
-        ;;
-    delete_alias)
-        amd "$2"
-        ;;
-    -l | --list)
+    fi
+    if [[ "$1" == "-l" || "$1" == "--list" ]]; then
         list_aliases
-        ;;
-    *)
-        echo "Error: Invalid subcommand '$subcommand'. Use 'am -h' for help." >&2
-        return 1
-        ;;
-    esac
-}
+        return 0
+    fi
 
-# Define a function to create a new zsh alias
-# Function create_alias
-function amc() {
     local -r alias_name="$1"
-    local -r alias_command="$2"
+    shift
+    local alias_command="$*"
 
-    # Check if the alias name or command is empty or contains invalid commands
-    if [[ $alias_name == *[';\`$']* || $alias_command == *[';\`$']* ]]; then
-        echo "Error: Invalid input provided" >&2
+    if [[ -z "$alias_name" || -z "$alias_command" ]]; then
+        echo "Usage: mkalias <alias_name> '<alias_command>'" >&2
+        return 1
+    fi
+
+    # Validate alias name (letters, numbers, underscores and dashes; cannot start with a dash)
+    if [[ "$alias_name" == -* || ! "$alias_name" =~ ^[A-Za-z0-9_][A-Za-z0-9_-]*$ ]]; then
+        echo "Error: Invalid alias name '$alias_name'. Use letters, numbers, '_' or '-', and don't start with '-'." >&2
         return 1
     fi
 
@@ -59,74 +44,104 @@ function amc() {
         return 1
     fi
 
-    # Create the new alias and save it to the .zshrc file
-    echo "alias $alias_name=\"$alias_command\"" >>~/.zshrc
-    source ~/.zshrc
+    # Append the alias to the user's .zshrc using single quotes to avoid $-expansion at source-time.
+    # Escape any single quotes in the command using the standard '"'"' sequence.
+    local escaped_command
+    escaped_command="${alias_command//'/\'"'"\'}"
+        # Ensure the file ends with a newline before appending, so we don't concatenate onto the previous token (e.g., 'fi')
+        if [[ -s "$HOME/.zshrc" ]]; then
+            local _last
+            _last=$(tail -c1 "$HOME/.zshrc" 2>/dev/null)
+            if [[ "$_last" != $'\n' ]]; then
+                echo >>"$HOME/.zshrc"
+            fi
+        fi
+    echo "alias $alias_name='$escaped_command'" >>"$HOME/.zshrc"
+    # shellcheck disable=SC1090
+    source "$HOME/.zshrc"
 
-    # Output the success message
     echo "Alias created:"
-    echo "Command: \`$alias_name\` will execute the following: \`$alias_command\`"
+    echo "  $alias_name → $alias_command"
 }
 
-# Delete an existing zsh alias
-# Args:
-# $1: Alias name
-function amd() {
+# Remove an existing zsh alias
+function rmalias() {
     local -r alias_name=$1
 
+    if [[ -z "$alias_name" ]]; then
+        echo "Usage: rmalias <alias_name>" >&2
+        return 1
+    fi
+
     # Check if the alias exists
-    if ! alias | grep -q "$alias_name="; then
+    if ! alias "$alias_name" >/dev/null 2>&1; then
         echo "Alias '$alias_name' does not exist."
         return 1
     fi
 
-    # Delete the alias from .zshrc
-    sed -i.bak "/alias $alias_name=/d" ~/.zshrc
-    # Remove backup file
-    rm ~/.zshrc.bak
-    # Unset the alias
-    unalias $alias_name
+    # Delete the alias line from .zshrc (create a temporary backup on macOS)
+    # Remove matching alias lines from .zshrc (allow optional leading whitespace)
+    sed -i.bak "/^[[:space:]]*alias $alias_name=/d" "$HOME/.zshrc"
+    rm -f "$HOME/.zshrc.bak"
+    # Unset the alias in the current shell
+    unalias "$alias_name" 2>/dev/null || true
     echo "Alias '$alias_name' has been deleted."
 }
 
-# Define a function to list all custom zsh aliases
+# List all custom zsh aliases from the user's .zshrc
 function list_aliases() {
     local -a aliases=()
     local rc_file="$HOME/.zshrc"
-    # Check if .zshrc file exists
-    if [ ! -f "$rc_file" ]; then
+
+    if [[ ! -f "$rc_file" ]]; then
         echo "No .zshrc file found." >&2
         return 1
     fi
 
-    # Read the .zshrc file and find all aliases
     while read -r line; do
         if [[ $line == alias* ]]; then
             aliases+=("$line")
         fi
     done <"$rc_file"
 
-    # Check if any aliases were found
-    if [ ${#aliases[@]} -gt 0 ]; then
-        echo "🔧 Custom aliases found in $HOME/.zshrc:"
+    if [[ ${#aliases[@]} -gt 0 ]]; then
+        echo "🔧 Custom aliases found in $rc_file:" 
         echo ""
-
         for alias in "${aliases[@]}"; do
             name="${alias%%=*}"
             command="${alias#*=}"
             name="${name#alias }"
-            echo "  - $name → ${command//\'/}"
+            # strip surrounding quotes for display and unescape single-quote pattern if present
+            if [[ $command == \"*\" ]]; then
+                command=${command#\"}
+                command=${command%\"}
+            elif [[ $command == \'*\' ]]; then
+                command=${command#\'}
+                command=${command%\'}
+                # Turn the escaped single-quote sequence '\'' back into a single quote for display
+                command=${command//\'"'"\'/\'}
+            fi
+            echo "  - $name → $command"
         done
     else
         echo "No custom aliases found in $rc_file"
     fi
 }
 
+# List aliases via standalone command
+function lsalias() {
+    if [[ $# -gt 0 ]]; then
+        echo "Usage: lsalias" >&2
+        return 1
+    fi
+    list_aliases
+}
+
 function show_help() {
-    echo "Usage: am [subcommand]"
-    echo "Subcommands:"
-    echo "  amc <alias_name> <alias_command>: Create a new custom zsh alias"
-    echo "  amd <alias_name>: Delete an existing custom zsh alias"
-    echo "  -h, --help: Show this help message"
-    echo "  -l, --list: List all custom zsh aliases defined in your .zshrc file"
+    echo "Usage:"
+    echo "  mkalias <alias_name> '<alias_command>'   Create a new custom zsh alias"
+    echo "  mkalias -l | --list                      List all custom zsh aliases in your .zshrc"
+    echo "  lsalias                                 List all custom zsh aliases (same as mkalias --list)"
+    echo "  rmalias <alias_name>                     Delete an existing custom zsh alias"
+    echo "  mkalias -h | --help                      Show this help message"
 }
